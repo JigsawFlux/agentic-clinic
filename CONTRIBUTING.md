@@ -13,7 +13,7 @@ Read [`implementation_plan.md`](implementation_plan.md) for the workflow design 
 ## Getting Started
 
 ```bash
-git clone git@github.com:st185229/agentic-clinic.git
+git clone git@github.com:jigsawflux/agentic-clinic.git
 cd agentic-clinic
 
 python -m venv .venv
