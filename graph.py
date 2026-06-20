@@ -21,7 +21,7 @@ from typing import Literal, TypedDict
 
 from langchain_aws import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
@@ -34,7 +34,6 @@ from tools import (
 )
 
 DB_PATH = "patients.db"
-CHECKPOINT_DB = "checkpoints.db"
 
 
 # ---------------------------------------------------------------------------
@@ -401,7 +400,7 @@ def build_graph():
     workflow.add_edge("clarification_agent", "doctor_review")
     workflow.add_edge("prescription_agent", END)
 
-    # from_conn_string() is a context manager — use a direct connection instead
-    conn = sqlite3.connect(CHECKPOINT_DB, check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
+    # MemorySaver is shared across tabs via @st.cache_resource — fine for POC
+    # Production: replace with langgraph-checkpoint-aws (DynamoDB)
+    checkpointer = MemorySaver()
     return workflow.compile(checkpointer=checkpointer)
