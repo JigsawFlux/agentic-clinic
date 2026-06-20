@@ -3,7 +3,17 @@
 
 A prototype illustrating a person-in-the-loop agentic architecture for remote medical consultation. An AI agent handles patient intake and prescription recording; a doctor steps in for diagnosis. Built to demonstrate how LangChain, LangGraph, and AWS Bedrock compose into a stateful, interruptible agentic workflow — at a cost viable for charity hospitals.
 
-See [`implementation_plan.md`](implementation_plan.md) for the full architectural blueprint, technology rationale, and production path.
+---
+
+## Documentation
+
+| Document | What it covers |
+|----------|---------------|
+| [`demo.md`](demo.md) | Screenshot walkthrough of a complete consultation |
+| [`implementation_plan.md`](implementation_plan.md) | Workflow design, state schema, tools, cost model |
+| [`architecture.md`](architecture.md) | C4 diagrams, LangGraph flowchart, ADRs, key tradeoffs |
+| [`roadmap.md`](roadmap.md) | POC-to-production phases, MCP migration, cost projection |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Setup, code conventions, PR guidelines |
 
 ---
 
@@ -58,7 +68,7 @@ export AWS_DEFAULT_REGION=us-east-1
 ### 3. Enable Bedrock model access
 
 In the [AWS Bedrock console](https://console.aws.amazon.com/bedrock/) → **Model access** → request access to:
-- `anthropic.claude-haiku-4-5-20251001-v1:0` (region: `us-east-1`)
+- `us.anthropic.claude-haiku-4-5-20251001-v1:0` (cross-region inference profile; covers `us-east-1`)
 
 ### 4. Seed the database
 
@@ -89,6 +99,7 @@ Open `http://localhost:8501` in your browser.
 
 ```
 ├── README.md               ← this file
+├── demo.md                 ← screenshot walkthrough of a complete consultation
 ├── implementation_plan.md  ← workflow design, state, tools, cost model
 ├── architecture.md         ← C4 diagrams, LangGraph flowchart, ADRs, tradeoffs
 ├── roadmap.md              ← POC-to-production phases, MCP migration, cost projection
@@ -123,6 +134,43 @@ The LangGraph graph nodes would not change; only the tool implementations swap.
 | **Per consultation** | **< $0.01** |
 
 50 consultations/day → **< $20/month** total in production (including DynamoDB + Fargate).
+
+---
+
+## Troubleshooting
+
+**`ValidationException: Invocation of model ID … with on-demand throughput isn't supported`**
+
+Claude Haiku 4.5 (and newer models) require a cross-region inference profile, not a direct model ID. The default in `graph.py` is already set to `us.anthropic.claude-haiku-4-5-20251001-v1:0` (note the `us.` prefix). If you've overridden `BEDROCK_MODEL_ID` with a bare model ID, switch it to the `us.` prefixed version.
+
+---
+
+**`ResourceNotFoundException: … marked as Legacy`**
+
+Your account has not used the model recently, or model access was never granted. Go to the [AWS Bedrock console](https://console.aws.amazon.com/bedrock/) → **Model access** and request access to the cross-region inference profile. To list currently active models in your account:
+
+```bash
+aws bedrock list-foundation-models --by-provider anthropic --region us-east-1 \
+  --query 'modelSummaries[?modelLifecycle.status==`ACTIVE`].modelId'
+```
+
+---
+
+**`TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'`**
+
+Python 3.9 does not support `X | None` union syntax at runtime. Both `app.py` and `graph.py` include `from __future__ import annotations` at the top to handle this. If you add new type hints, keep that import in place.
+
+---
+
+**Graph state not updating between patient and doctor tabs**
+
+Both tabs must be open in the **same browser session** on the same Streamlit server. The `MemorySaver` checkpointer lives in-process and is shared via `@st.cache_resource`. Opening a second browser window in a private/incognito tab will start a separate server process with a separate memory store.
+
+---
+
+**`patients.db` not found**
+
+Run `python seed_db.py` before starting the app. The database file is gitignored and must be created locally.
 
 ---
 

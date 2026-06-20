@@ -24,7 +24,7 @@ python seed_db.py
 streamlit run app.py
 ```
 
-AWS credentials must be active with Bedrock access to `anthropic.claude-haiku-4-5-20251001-v1:0` in `us-east-1`. See the README for details.
+AWS credentials must be active with Bedrock access to `us.anthropic.claude-haiku-4-5-20251001-v1:0` (cross-region inference profile) in `us-east-1`. See the README for details.
 
 ---
 
