@@ -25,7 +25,7 @@ graph TB
     Patient["👤 Patient\nDescribes symptoms,\nreceives prescription"]
     Doctor["👨‍⚕️ Doctor\nReviews AI intake summary,\nprovides diagnosis"]
     System["🏥 agentic-clinic\nAI-powered medical\nconsultation platform"]
-    Bedrock["☁️ AWS Bedrock\nClaude 3 Haiku\nFoundation model"]
+    Bedrock["☁️ AWS Bedrock\nClaude Haiku 4.5\nFoundation model"]
     PatientDB[("🗄️ Patient Records\nMedical history,\nknowledge base,\npharmacy inventory")]
 
     Patient -->|"Describes symptoms\nAnswers clarifications\nReceives prescription"| System
@@ -65,7 +65,7 @@ graph TB
         Consults[("consultations\nStatus polling table")]
     end
 
-    Bedrock["☁️ AWS Bedrock\nClaude 3 Haiku"]
+    Bedrock["☁️ AWS Bedrock\nClaude Haiku 4.5"]
 
     UI <-->|"HTTP · reruns on interaction"| App
     App -->|"build_graph() cached\nvia @st.cache_resource"| Graph
@@ -204,7 +204,7 @@ graph TB
         CW["CloudWatch\nAudit trail\nAgent telemetry"]
     end
 
-    Bedrock["☁️ AWS Bedrock\nClaude 3 Haiku"]
+    Bedrock["☁️ AWS Bedrock\nClaude Haiku 4.5"]
 
     P <-->|HTTPS| WebApp
     D <-->|HTTPS| WebApp
@@ -257,32 +257,33 @@ Use LangGraph as the orchestration layer. A `StateGraph` encodes the consultatio
 
 ---
 
-### ADR-002 — Claude 3 Haiku over Claude 3 Sonnet
+### ADR-002 — Claude Haiku 4.5 over Claude Sonnet 4
 
 **Status:** Accepted  
 **Date:** 2026-06-20
 
 #### Context
-The platform targets charity hospitals where per-consultation cost is a key constraint. Two Claude models were considered: Haiku ($0.25/$1.25 per million input/output tokens) and Sonnet (~8× more expensive). Both are capable of medical-domain reasoning.
+The platform targets charity hospitals where per-consultation cost is a key constraint. Two Claude 4 models were considered: Haiku 4.5 and Sonnet 4 (~8× more expensive). Both are capable of medical-domain reasoning. Earlier Claude 3 Haiku variants were initially considered but are marked as legacy on this AWS account and cannot be invoked.
 
 #### Decision
-Use Claude 3 Haiku for all agent nodes (intake, prescription). Sonnet is not used in the POC.
+Use Claude Haiku 4.5 (`us.anthropic.claude-haiku-4-5-20251001-v1:0`) for all agent nodes (intake, prescription). The model is invoked via a cross-region inference profile (the `us.` prefix) — direct model ID invocation is not supported for this model on Bedrock on-demand throughput.
 
 #### Consequences
 
 **Positive:**
 - ~$0.001 per consultation — viable at any volume for a charity hospital
-- Haiku's native multilingual capability covers the low-literacy / non-English-speaking patient demographic at no extra cost
-- Structured JSON output (`triage_score`, `intake_summary`) is reliably produced by Haiku
+- Haiku 4.5's native multilingual capability covers the low-literacy / non-English-speaking patient demographic at no extra cost
+- Structured JSON output (`triage_score`, `intake_summary`) is reliably produced by Haiku 4.5
+- Newer model generation than Claude 3 Haiku — better instruction following and tool use
 
 **Negative:**
-- Haiku may produce less nuanced clinical reasoning for complex, multi-comorbidity cases
+- Haiku may produce less nuanced clinical reasoning for complex, multi-comorbidity cases than Sonnet 4
 - Triage scoring accuracy is lower than Sonnet for edge cases
 
 **Mitigations:**
 - The doctor is always in the loop before any prescription is finalised — AI outputs are advisory, not autonomous
 - The `triage_score` is a queue-sorting mechanism, not a clinical decision; the doctor overrides it implicitly by reviewing cases in any order
-- Individual nodes can be upgraded to Sonnet independently (e.g., for a specialist agent) without changing the graph
+- Individual nodes can be upgraded to Sonnet independently (e.g., for a specialist agent) without changing the graph — just swap `model_id` in `_get_model()`
 
 ---
 
@@ -436,17 +437,17 @@ Use Streamlit. The entire frontend is Python, consistent with the rest of the st
 
 ---
 
-### 3. Haiku vs. Sonnet for Clinical Reasoning
+### 3. Haiku 4.5 vs. Sonnet 4 for Clinical Reasoning
 
-| | Claude 3 Haiku | Claude 3 Sonnet |
-|--|---------------|-----------------|
+| | Claude Haiku 4.5 | Claude Sonnet 4 |
+|--|-----------------|-----------------|
 | Cost per consultation | ~$0.001 | ~$0.008 |
 | Multilingual | ✅ Native | ✅ Native |
 | Triage accuracy | Good for common presentations | Better for complex cases |
 | Structured JSON output | Reliable | Very reliable |
 | Doctor always reviews | ✅ Yes | ✅ Yes |
 
-**Verdict:** Haiku is the right default because the doctor is always the final clinical authority. Sonnet can be introduced for specific high-acuity nodes (e.g., a specialist triage agent) without changing the graph topology — just swap `model_id` in `_get_model()` per node.
+**Verdict:** Haiku 4.5 is the right default because the doctor is always the final clinical authority. Sonnet 4 can be introduced for specific high-acuity nodes (e.g., a specialist triage agent) without changing the graph topology — just swap `model_id` in `_get_model()` per node.
 
 ---
 
