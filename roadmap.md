@@ -15,7 +15,7 @@ The single most significant architectural transition is **Phase 2: the move from
 
 | Concern | Implementation | Limitation |
 |---------|---------------|------------|
-| LLM | Claude 3 Haiku via Bedrock | ✅ Production-ready as-is |
+| LLM | Claude Haiku 4.5 via Bedrock (`us.anthropic.claude-haiku-4-5-20251001-v1:0`) | ✅ Production-ready as-is |
 | Orchestration | LangGraph + `interrupt()` | ✅ Production-ready as-is |
 | Checkpointing | SQLite (`checkpoints.db`) | Local only, single process |
 | Patient data | SQLite (`patients.db`) | Local only, no access control |
@@ -212,7 +212,7 @@ The transcribed text drops into the same `symptoms` field and the rest of the gr
 
 ### Native Multilingual Intake *(already implemented in POC)*
 
-Claude 3 Haiku's native multilingual capability is used in the current POC: the intake agent detects the patient's language and responds in kind while always producing the `intake_summary` in English for the doctor. This bridges communication gaps at zero additional cost — no translation service or separate model is required.
+Claude Haiku 4.5's native multilingual capability is used in the current POC: the intake agent detects the patient's language and responds in kind while always producing the `intake_summary` in English for the doctor. This bridges communication gaps at zero additional cost — no translation service or separate model is required.
 
 ---
 
