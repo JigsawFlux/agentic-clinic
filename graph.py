@@ -25,7 +25,13 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
-from tools import get_medical_history, get_patient_record, record_prescription, search_knowledge_base
+from tools import (
+    check_pharmacy_inventory,
+    get_medical_history,
+    get_patient_record,
+    record_prescription,
+    search_knowledge_base,
+)
 
 DB_PATH = "patients.db"
 CHECKPOINT_DB = "checkpoints.db"
@@ -43,6 +49,8 @@ class ConsultationState(TypedDict):
 
     intake_summary: str
     is_emergency: bool
+    triage_score: int    # 1=Routine, 2=Minor, 3=Moderate, 4=Severe, 5=Urgent non-emergency
+    triage_reason: str   # one-sentence AI justification for the score
 
     doctor_clarification_req: str
     patient_clarification_ans: str
@@ -86,21 +94,26 @@ def _update_consultation(session_id: str, **kwargs):
 
 INTAKE_SYSTEM = """You are a compassionate AI medical intake assistant.
 
+LANGUAGE: Detect the language of the patient's first message and respond in that same language
+in your `patient_message` field. Always write `intake_summary` in English for the doctor.
+
 Your job:
 1. Review the patient's reported symptoms.
 2. Use the available tools to fetch their patient record and medical history.
 3. Search the knowledge base for relevant clinical context.
-4. Produce a concise, structured intake summary for the doctor.
+4. Produce a concise, structured intake summary and triage assessment.
 
 Respond ONLY with valid JSON in this exact format (no markdown, no prose):
 {
-  "intake_summary": "<structured clinical summary for the doctor, 3-6 sentences>",
-  "is_emergency": <true if any symptom matches known emergency indicators, otherwise false>,
-  "patient_message": "<brief, reassuring message to show the patient while they wait>"
+  "intake_summary": "<clinical summary in English for the doctor, 3-6 sentences>",
+  "is_emergency": <true ONLY if life-threatening: stroke, cardiac arrest, severe bleeding, anaphylaxis>,
+  "triage_score": <integer 1-5: 1=Routine/refill, 2=Minor ailment, 3=Moderate discomfort, 4=Severe pain or high fever, 5=Urgent non-emergency>,
+  "triage_reason": "<one concise sentence explaining the triage score>",
+  "patient_message": "<brief, reassuring message in the PATIENT'S language>"
 }
 
-Emergency indicators: chest pain with shortness of breath or radiation, stroke symptoms (FAST),
-severe bleeding, loss of consciousness, severe allergic reaction, difficulty breathing."""
+Emergency indicators (is_emergency=true): chest pain radiating to arm/jaw, stroke symptoms (FAST),
+loss of consciousness, severe allergic reaction with breathing difficulty, uncontrolled severe bleeding."""
 
 
 def intake_agent_node(state: ConsultationState) -> dict:
@@ -143,6 +156,8 @@ def intake_agent_node(state: ConsultationState) -> dict:
 
     intake_summary = parsed.get("intake_summary", content)
     is_emergency = bool(parsed.get("is_emergency", False))
+    triage_score = int(parsed.get("triage_score", 2))
+    triage_reason = parsed.get("triage_reason", "")
     patient_msg = parsed.get(
         "patient_message",
         "Thank you. Your intake is complete. A doctor will review your case shortly."
@@ -159,6 +174,8 @@ def intake_agent_node(state: ConsultationState) -> dict:
         state["session_id"],
         intake_summary=intake_summary,
         is_emergency=int(is_emergency),
+        triage_score=triage_score,
+        triage_reason=triage_reason,
         status=status,
     )
 
@@ -166,6 +183,8 @@ def intake_agent_node(state: ConsultationState) -> dict:
         "patient_history": patient_history,
         "intake_summary": intake_summary,
         "is_emergency": is_emergency,
+        "triage_score": triage_score,
+        "triage_reason": triage_reason,
         "status": status,
         "messages": new_messages,
     }
@@ -278,10 +297,17 @@ def clarification_agent_node(state: ConsultationState) -> dict:
 # ---------------------------------------------------------------------------
 
 PRESCRIPTION_SYSTEM = """You are a medical prescription assistant. Based on the doctor's notes,
-generate a clear and professional prescription. Include:
+generate a clear and professional prescription.
+
+IMPORTANT: Before finalising, use check_pharmacy_inventory to verify each medication is in stock.
+If a medication is out of stock, suggest a clinically appropriate alternative and check its
+availability too. Only prescribe medications confirmed as in stock.
+
+Include in the final prescription:
 - Medication name, strength, and dosage
 - Frequency and duration
 - Special instructions (take with food, avoid alcohol, etc.)
+- Note if any substitution was made due to stock availability
 - Follow-up recommendation
 
 Output the prescription text only — no JSON, no commentary. Be precise and clinically accurate."""
@@ -289,7 +315,7 @@ Output the prescription text only — no JSON, no commentary. Be precise and cli
 
 def prescription_agent_node(state: ConsultationState) -> dict:
     llm = _get_model()
-    prescription_tools = [record_prescription]
+    prescription_tools = [check_pharmacy_inventory, record_prescription]
     llm_with_tools = llm.bind_tools(prescription_tools)
     tool_map = {t.name: t for t in prescription_tools}
 

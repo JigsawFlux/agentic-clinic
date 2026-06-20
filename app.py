@@ -47,11 +47,12 @@ def get_consultation(session_id: str) -> dict | None:
 
 
 def get_pending_consultations() -> list[dict]:
-    """Consultations waiting for doctor input."""
+    """Consultations waiting for doctor input, sorted by triage severity then wait time."""
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT * FROM consultations WHERE status IN ('awaiting_doctor', 'clarifying') ORDER BY created_at ASC"
+            "SELECT * FROM consultations WHERE status IN ('awaiting_doctor', 'clarifying') "
+            "ORDER BY triage_score DESC, created_at ASC"
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -271,8 +272,12 @@ def show_doctor_view():
     st.write(f"**{len(pending)} consultation(s) awaiting review:**")
 
     for c in pending:
-        urgency = "🟡"  # standard
-        label = f"{urgency} Patient **{c['patient_id']}** · waiting {minutes_waiting(c['created_at'])}"
+        score = c.get("triage_score", 0)
+        badge = "🔴" if score >= 4 else "🟡" if score == 3 else "🟢"
+        label = (
+            f"{badge} Level {score} — Patient **{c['patient_id']}** · "
+            f"waiting {minutes_waiting(c['created_at'])}"
+        )
         with st.expander(label, expanded=(len(pending) == 1)):
             _render_doctor_panel(c, graph)
 
@@ -286,7 +291,12 @@ def _render_doctor_panel(consultation: dict, graph):
 
     # ── Left: patient context ──
     with col_left:
-        st.subheader("Intake Summary")
+        score = consultation.get("triage_score", 0)
+        reason = consultation.get("triage_reason", "")
+        badge = "🔴" if score >= 4 else "🟡" if score == 3 else "🟢"
+        st.subheader(f"Intake Summary  {badge} Triage Level {score}")
+        if reason:
+            st.caption(f"_{reason}_")
         st.write(consultation.get("intake_summary") or "_Not yet available._")
 
         if consultation.get("patient_clarification_ans"):

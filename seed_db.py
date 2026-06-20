@@ -6,6 +6,7 @@ DB_PATH = "patients.db"
 
 SCHEMA = """
 DROP TABLE IF EXISTS consultations;
+DROP TABLE IF EXISTS pharmacy_inventory;
 DROP TABLE IF EXISTS knowledge_base;
 DROP TABLE IF EXISTS medical_history;
 DROP TABLE IF EXISTS patients;
@@ -34,12 +35,22 @@ CREATE TABLE knowledge_base (
     category    TEXT
 );
 
+CREATE TABLE pharmacy_inventory (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    medication_name     TEXT NOT NULL,
+    generic_name        TEXT,
+    quantity_in_stock   INTEGER DEFAULT 0,
+    unit                TEXT
+);
+
 CREATE TABLE consultations (
     session_id                  TEXT PRIMARY KEY,
     patient_id                  TEXT,
     symptoms                    TEXT,
     intake_summary              TEXT DEFAULT '',
     is_emergency                INTEGER DEFAULT 0,
+    triage_score                INTEGER DEFAULT 0,
+    triage_reason               TEXT DEFAULT '',
     doctor_clarification_req    TEXT DEFAULT '',
     patient_clarification_ans   TEXT DEFAULT '',
     doctor_notes                TEXT DEFAULT '',
@@ -112,6 +123,22 @@ KNOWLEDGE_BASE = [
 ]
 
 
+PHARMACY_INVENTORY = [
+    ("Paracetamol 500mg",       "Acetaminophen",        500, "tablets"),
+    ("Ibuprofen 400mg",         "Ibuprofen",            200, "tablets"),
+    ("Amoxicillin 500mg",       "Amoxicillin",            0, "capsules"),   # out of stock — demo case
+    ("Azithromycin 250mg",      "Azithromycin",          50, "tablets"),
+    ("Cetirizine 10mg",         "Cetirizine",           100, "tablets"),
+    ("Salbutamol inhaler",      "Albuterol",             30, "inhalers"),
+    ("Beclometasone inhaler",   "Beclomethasone",        20, "inhalers"),
+    ("Metformin 500mg",         "Metformin",            150, "tablets"),
+    ("Lisinopril 10mg",         "Lisinopril",            80, "tablets"),
+    ("Omeprazole 20mg",         "Omeprazole",            60, "capsules"),
+    ("Doxycycline 100mg",       "Doxycycline",           40, "capsules"),
+    ("Prednisolone 5mg",        "Prednisolone",          35, "tablets"),
+]
+
+
 def seed():
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
@@ -124,12 +151,17 @@ def seed():
         "INSERT INTO knowledge_base (topic, content, category) VALUES (?,?,?)",
         KNOWLEDGE_BASE
     )
+    conn.executemany(
+        "INSERT INTO pharmacy_inventory (medication_name, generic_name, quantity_in_stock, unit) VALUES (?,?,?,?)",
+        PHARMACY_INVENTORY
+    )
     conn.commit()
     conn.close()
 
     print(f"✓ {DB_PATH} created and seeded.")
-    print("  Patients: P001 Alice Thompson | P002 Bob Patel | P003 Carol Nguyen")
-    print("  Use any of these IDs in the patient login screen.")
+    print("  Patients:   P001 Alice Thompson | P002 Bob Patel | P003 Carol Nguyen")
+    print("  Pharmacy:   12 medications seeded (Amoxicillin intentionally out of stock for demo)")
+    print("  Use any patient ID in the login screen.")
 
 
 if __name__ == "__main__":

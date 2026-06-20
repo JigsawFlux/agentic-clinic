@@ -184,10 +184,42 @@ At 50 consultations/day in full production: **< $120/month total**, or roughly *
 
 ---
 
+---
+
+## Beyond Production — Low-Resource Environment Extensions
+
+These are not phases with dependencies on Phase 1–5. They are additive capabilities targeting the specific constraints of charity hospitals in developing regions.
+
+### WhatsApp / SMS Patient Interface
+
+In many low-income communities, patients may not have reliable data connections or the digital literacy for a web app, but they universally use WhatsApp or basic SMS. The Streamlit patient view can be replaced entirely with a **Twilio webhook** — the agent workflow is unchanged because LangGraph's `interrupt()` is agnostic to the channel: the state simply sits in DynamoDB waiting for the next SMS reply, however long that takes.
+
+```
+Patient SMS → Twilio webhook → resume graph with Command(resume=message)
+                              ← graph responds → Twilio sends reply SMS
+```
+
+This also eliminates the need for a frontend deployment entirely for the patient-facing side, dropping infrastructure costs further.
+
+### Voice Note / Audio Intake
+
+Typing complex medical symptoms is difficult for elderly or low-literacy patients. A voice note preprocessing step before the text reaches the intake agent removes this friction with no cost increase at low volumes:
+
+- **AWS Transcribe** — pay-per-second, near-zero cost at consultation volumes; HIPAA-eligible
+- **OpenAI Whisper (self-hosted)** — open-source alternative, zero marginal cost, runs on a small EC2 instance
+
+The transcribed text drops into the same `symptoms` field and the rest of the graph runs identically. No graph changes required.
+
+### Native Multilingual Intake *(already implemented in POC)*
+
+Claude 3 Haiku's native multilingual capability is used in the current POC: the intake agent detects the patient's language and responds in kind while always producing the `intake_summary` in English for the doctor. This bridges communication gaps at zero additional cost — no translation service or separate model is required.
+
+---
+
 ## What This Is Not
 
 This roadmap does not cover:
 - **EHR integration** (Epic, FHIR) — MCP servers in Phase 2 are the integration point; connectors are additive
-- **Video/audio consultation** — out of scope for the agentic workflow POC; handled by separate WebRTC infrastructure
+- **Video consultation** — out of scope for the agentic workflow; handled by separate WebRTC infrastructure
 - **Regulatory approval** (FDA, MHRA for clinical decision support) — legal and compliance process, not an engineering phase
 - **Training the foundation model** — Bedrock is used as-is; domain fine-tuning is a separate initiative if needed

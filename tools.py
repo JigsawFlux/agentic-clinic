@@ -55,6 +55,27 @@ def search_knowledge_base(query: str) -> list:
 
 
 @tool
+def check_pharmacy_inventory(medication_name: str) -> dict:
+    """Check whether a medication is in stock at the pharmacy. Returns quantity available."""
+    with _db() as conn:
+        row = conn.execute(
+            "SELECT medication_name, generic_name, quantity_in_stock, unit "
+            "FROM pharmacy_inventory WHERE medication_name LIKE ? OR generic_name LIKE ? LIMIT 1",
+            (f"%{medication_name}%", f"%{medication_name}%"),
+        ).fetchone()
+    if not row:
+        return {"medication": medication_name, "in_stock": False, "quantity": 0, "note": "Not found in pharmacy system."}
+    qty = row[2]
+    return {
+        "medication": row[0],
+        "generic_name": row[1],
+        "in_stock": qty > 0,
+        "quantity": qty,
+        "unit": row[3],
+    }
+
+
+@tool
 def record_prescription(session_id: str, prescription: str) -> str:
     """Record the final prescription for a consultation and mark it as complete."""
     with _db() as conn:
