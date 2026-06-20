@@ -17,7 +17,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-AWS credentials must be active (`aws configure` or env vars). Model: `anthropic.claude-3-haiku-20240307-v1:0` in `us-east-1`.
+AWS credentials must be active (`aws configure` or env vars). Model: `anthropic.claude-3-5-haiku-20241022-v1:0` in `us-east-1`.
 
 ## Run
 
