@@ -33,11 +33,12 @@ Patient → AI Intake Agent → [Emergency?] → Emergency alert (999/911)
 
 ## Setup
 
-### 1. Install dependencies
+### 1. Create a virtual environment and install dependencies
 
 ```bash
-pip install langgraph langchain-aws langchain-core boto3 streamlit \
-            langgraph-checkpoint-sqlite
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### 2. Configure AWS credentials

@@ -13,7 +13,8 @@ See `implementation_plan.md` for the full architectural blueprint.
 ## Setup
 
 ```bash
-pip install langgraph langchain-aws langchain-core boto3 streamlit langgraph-checkpoint-sqlite
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 AWS credentials must be active (`aws configure` or env vars). Model: `anthropic.claude-3-haiku-20240307-v1:0` in `us-east-1`.
