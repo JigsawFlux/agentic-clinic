@@ -58,7 +58,7 @@ export AWS_DEFAULT_REGION=us-east-1
 ### 3. Enable Bedrock model access
 
 In the [AWS Bedrock console](https://console.aws.amazon.com/bedrock/) → **Model access** → request access to:
-- `anthropic.claude-3-5-haiku-20241022-v1:0` (region: `us-east-1`)
+- `anthropic.claude-haiku-4-5-20251001-v1:0` (region: `us-east-1`)
 
 ### 4. Seed the database
 
@@ -117,7 +117,7 @@ The LangGraph graph nodes would not change; only the tool implementations swap.
 
 | Item | Cost |
 |------|------|
-| Claude 3.5 Haiku (~2,500 tokens/consultation) | ~$0.001 |
+| Claude Haiku 4.5 (~2,500 tokens/consultation) | ~$0.001 |
 | SQLite (POC) | $0 |
 | Streamlit (local) | $0 |
 | **Per consultation** | **< $0.01** |

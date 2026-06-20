@@ -34,6 +34,7 @@ from tools import (
 )
 
 DB_PATH = "patients.db"
+MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0")
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +68,7 @@ class ConsultationState(TypedDict):
 
 def _get_model():
     return ChatBedrock(
-        model_id="anthropic.claude-3-5-haiku-20241022-v1:0",
+        model_id=MODEL_ID,
         model_kwargs={"temperature": 0.3},
         region_name=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
     )
