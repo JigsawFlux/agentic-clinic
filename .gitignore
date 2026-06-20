@@ -1,5 +1,6 @@
 .env
 .venv/
+python3-virtualenv/
 __pycache__/
 *.pyc
 *.db
