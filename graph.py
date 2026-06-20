@@ -401,5 +401,7 @@ def build_graph():
     workflow.add_edge("clarification_agent", "doctor_review")
     workflow.add_edge("prescription_agent", END)
 
-    checkpointer = SqliteSaver.from_conn_string(CHECKPOINT_DB)
+    # from_conn_string() is a context manager — use a direct connection instead
+    conn = sqlite3.connect(CHECKPOINT_DB, check_same_thread=False)
+    checkpointer = SqliteSaver(conn)
     return workflow.compile(checkpointer=checkpointer)
